@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WikiWander - 3D Wikipedia Visualizer</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas3d"></canvas>
+    </div>
+
+    <!-- UI Controls -->
+    <div id="controls">
+        <div class="control-group">
+            <h2>WikiWander</h2>
+            <input type="text" id="startUrl" placeholder="Enter Wikipedia URL or article name">
+            <button id="startBtn">Start Journey</button>
+        </div>
+
+        <div class="control-group">
+            <button id="zoomOutBtn">Zoom Out (See All)</button>
+            <button id="resetViewBtn">Reset View</button>
+        </div>
+
+        <div class="control-group">
+            <h3>Open Pages (<span id="pageCount">0</span>)</h3>
+            <div id="pageList"></div>
+        </div>
+
+        <div class="control-group instructions">
+            <h3>Controls</h3>
+            <ul>
+                <li>Click on links in pages to navigate</li>
+                <li>Drag to rotate view</li>
+                <li>Scroll to zoom</li>
+                <li>Click page in list to focus it</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Loading Wikipedia page...</p>
+    </div>
+
+    <!-- Page Viewer Modal -->
+    <div id="pageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Wikipedia Page</h2>
+                <button id="closeModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="modalIframe" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div class="modal-footer">
+                    <div class="modal-info">
+                        To add a link from this page: Right-click a Wikipedia link, copy the URL, and paste it below
+                    </div>
+                    <div class="add-link-controls">
+                        <input type="text" id="modalLinkInput" placeholder="Paste Wikipedia link or article name here">
+                        <button id="addLinkBtn">Add to Visualization</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="js/scene.js"></script>
+    <script src="js/pageManager.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
