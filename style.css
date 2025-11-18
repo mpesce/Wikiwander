@@ -1,0 +1,156 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    background: #000;
+    color: #fff;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100vh;
+}
+
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+#loading.active {
+    display: flex;
+}
+
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #4da6ff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 350px;
+    border: 1px solid rgba(77, 166, 255, 0.3);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+}
+
+#controls h1 {
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: #4da6ff;
+}
+
+#controls h3 {
+    font-size: 16px;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    color: #4da6ff;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+#wikiUrl {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(77, 166, 255, 0.5);
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+#wikiUrl::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+#loadBtn {
+    width: 100%;
+    padding: 10px;
+    background: #4da6ff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+#loadBtn:hover {
+    background: #66b3ff;
+}
+
+#loadBtn:active {
+    background: #3399ff;
+}
+
+#info {
+    background: rgba(77, 166, 255, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+#info p {
+    margin: 5px 0;
+}
+
+#info span {
+    color: #4da6ff;
+    font-weight: bold;
+}
+
+.instructions {
+    font-size: 13px;
+}
+
+.instructions ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.instructions li {
+    padding: 5px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.instructions li:before {
+    content: "•";
+    color: #4da6ff;
+    font-weight: bold;
+    position: absolute;
+    left: 5px;
+}

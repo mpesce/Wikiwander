@@ -1,103 +1,66 @@
 # WikiWander - 3D Wikipedia Visualizer
 
-A fully client-side 3D visualization tool for exploring Wikipedia. Navigate through Wikipedia articles in a stunning 3D space, creating a visual web of knowledge as you explore.
+A fully client-side 3D visualization tool for exploring Wikipedia. Navigate through Wikipedia articles in stunning 3D space, where each page floats in the center surrounded by a constellation of linked articles.
 
 ## Features
 
-- **3D Visualization**: Wikipedia pages rendered as floating planes in 3D space
-- **Spiral Layout**: Pages are arranged in an elegant spiral pattern
-- **Interactive Navigation**: Click, drag, and zoom to explore your knowledge graph
-- **Link Following**: Easy interface to add linked Wikipedia articles
-- **Connection Tracking**: Visual lines showing relationships between pages
-- **Performance Optimized**: Supports 50+ pages without performance degradation
+- **3D Page Rendering**: Wikipedia pages rendered as floating textured planes in 3D space
+- **Link Constellation**: Up to 100 Wikipedia links displayed as bright blue circles arranged in a circle around the main page
+- **Interactive Navigation**: Click on any blue circle to navigate to that article
+- **Page History**: Previously viewed pages move into the constellation as you navigate
+- **Smooth Controls**: Drag to rotate, scroll to zoom, click to navigate
 - **Fully Client-Side**: No server required, works entirely in your browser
-- **No HTTPS Required**: Can be served from any web server
+- **Single Directory**: All files in one folder for easy deployment
 
 ## How to Use
 
 ### Getting Started
 
-1. Open `index.html` in a modern web browser
-2. Enter a Wikipedia article name or URL in the input field
-3. Click "Start Journey" to begin your exploration
+1. Open `index.html` in a modern web browser (Chrome, Firefox, Safari, or Edge)
+2. Enter a Wikipedia article name (e.g., "Solar System") or full URL in the input field
+3. Click "Load Article" or press Enter
+4. Watch as the page appears in 3D space with linked articles as blue circles around it
 
-### Navigation Controls
+### Navigation
 
-- **Drag**: Click and drag to rotate the camera around the visualization
-- **Scroll**: Use mouse wheel to zoom in and out
-- **Click Page**: Click on any page in 3D space to view its full content
-- **Zoom Out**: Click "Zoom Out (See All)" to see your entire knowledge graph
-- **Reset View**: Return to the currently active page
+- **Rotate View**: Click and drag anywhere to rotate the camera around the visualization
+- **Zoom**: Use mouse wheel to zoom in and out
+- **Navigate**: Click on any blue circle to load that linked article
+- **Labels**: Each blue circle is labeled with the article title
 
-### Adding New Pages
+### How It Works
 
-1. Click on any Wikipedia page in the 3D space
-2. A modal window will open with the full Wikipedia article
-3. Browse the article and find interesting links
-4. Right-click on a Wikipedia link and copy its URL
-5. Paste the URL in the "Add to Visualization" field at the bottom of the modal
-6. Press Enter or click "Add to Visualization"
-7. The new page will appear in 3D space, connected to the source page
-
-### Page List
-
-The right sidebar shows all open pages:
-- Current depth in the exploration tree
-- Click any page in the list to focus on it
-- Total page count is displayed at the top
+1. When you load an article, WikiWander fetches it from Wikipedia's API
+2. The main article appears as a textured plane in the center of 3D space
+3. The first 100 Wikipedia links are extracted and displayed as bright blue (#4da6ff) circles
+4. Links are arranged in a circular constellation around the main page
+5. Each link is labeled and large enough to click easily
+6. Clicking a link loads that article and moves the previous page into the constellation
 
 ## Technical Details
 
-### Technologies Used
+### Technologies
 
-- **Three.js** (r128): WebGL-based 3D rendering
-- **Vanilla JavaScript**: No frameworks, pure ES6+
-- **CSS3**: Modern styling with backdrop filters
-- **Wikipedia**: For article content
+- **Three.js** (r128): WebGL-based 3D rendering (only framework used)
+- **Vanilla JavaScript**: Pure ES6+, no other frameworks
+- **CSS3**: Modern styling
+- **Wikipedia API**: For fetching article content and links
 
 ### File Structure
 
 ```
 WikiWander/
-├── index.html              # Main HTML file
-├── css/
-│   └── style.css          # All styles
-├── js/
-│   ├── main.js            # Application entry point
-│   ├── scene.js           # Three.js scene management
-│   ├── pageManager.js     # Wikipedia page handling
-│   ├── navigation.js      # Camera controls and interaction
-│   └── ui.js              # UI controls and modal management
-└── README.md              # This file
+├── index.html    # Main HTML file
+├── style.css     # All styles
+├── app.js        # Complete application logic
+└── README.md     # This file
 ```
 
-### Architecture
+### Browser Requirements
 
-- **SceneManager**: Handles Three.js scene, camera, renderer, and lighting
-- **PageManager**: Manages Wikipedia pages, 3D representations, and connections
-- **NavigationManager**: Handles camera movement, user input, and page interactions
-- **UIManager**: Controls UI elements, modals, and page list
-- **WikiWander**: Main application class that coordinates all components
-
-### Performance
-
-- Optimized for 50+ pages
-- Efficient memory management
-- RequestAnimationFrame for smooth 60fps rendering
-- Automatic pause when tab is not visible
-
-## Browser Compatibility
-
-Tested and working on:
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-Requires:
-- WebGL support
-- ES6+ JavaScript support
-- CSS3 with backdrop-filter support
+- Modern browser with WebGL support (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
+- JavaScript enabled
+- Internet connection (to fetch Wikipedia content)
 
 ## Deployment
 
@@ -127,31 +90,50 @@ php -S localhost:8000
 
 Then open `http://localhost:8000` in your browser.
 
-### File Server
+### Direct File Access
 
-Simply open `index.html` directly in your browser (file:// protocol works fine).
+You can also simply open `index.html` directly in your browser (file:// protocol).
+
+### Web Hosting
+
+Upload all files to any web hosting service. Works with both HTTP and HTTPS.
+
+## Features in Detail
+
+### Constellation Layout
+
+- Links are evenly distributed in a circle with 15-unit radius
+- Slight vertical variation for visual interest
+- Semi-transparent connection lines from center to each link
+- Blue spheres with emissive glow effect
+
+### Circle Specifications
+
+- **Color**: Bright blue (#4da6ff)
+- **Size**: 0.5-unit radius (large enough for easy clicking)
+- **Spacing**: Evenly distributed to prevent overlap
+- **Label**: Each circle has a text label above it
+- **Interactivity**: Clickable for navigation
+
+### Visual Effects
+
+- Starfield background (1000 stars)
+- Atmospheric fog effect
+- Rotating link spheres
+- Labels always face the camera
+- Smooth camera controls
 
 ## Limitations
 
-- Wikipedia iframe content is subject to CORS restrictions
-- Links must be manually copied and pasted (automatic link detection not possible due to CORS)
-- Some Wikipedia pages may not load in iframes due to X-Frame-Options headers
-
-## Future Enhancements
-
-- Search functionality within the visualization
-- Page preview on hover
-- Different layout algorithms (tree, force-directed, etc.)
-- Export visualization as image or data
-- Save/load session state
-- Filter pages by topic or category
-- VR support
+- Wikipedia API rate limits may apply for excessive requests
+- Some Wikipedia pages may have fewer than 100 links
+- Visual representation of page content is simplified (title + description)
 
 ## Credits
 
-Created with:
 - [Three.js](https://threejs.org/) - 3D graphics library
-- [Wikipedia](https://www.wikipedia.org/) - Free encyclopedia
+- [Wikipedia](https://www.wikipedia.org/) - Content source
+- Built with only Three.js as requested (no other frameworks)
 
 ---
 
