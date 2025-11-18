@@ -7,7 +7,9 @@ class WikiWander {
         this.camera = null;
         this.renderer = null;
         this.currentPage = null;
-        this.linkNodes = [];
+        this.currentPageTitle = null;
+        this.linkNodes = []; // Current page's links
+        this.visitedPages = []; // Previously visited pages as blue circles
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.isDragging = false;
@@ -151,15 +153,28 @@ class WikiWander {
         // Update raycaster
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // Check for intersections with link nodes
-        const clickableObjects = this.linkNodes.map(node => node.mesh);
+        // Check for intersections with both current links and visited pages
+        const clickableObjects = [
+            ...this.linkNodes.map(node => node.mesh),
+            ...this.visitedPages.map(node => node.mesh)
+        ];
         const intersects = this.raycaster.intersectObjects(clickableObjects);
 
         if (intersects.length > 0) {
             const clickedObject = intersects[0].object;
-            const linkNode = this.linkNodes.find(node => node.mesh === clickedObject);
+
+            // Check if it's a link from current page
+            let linkNode = this.linkNodes.find(node => node.mesh === clickedObject);
             if (linkNode) {
                 this.navigateToLink(linkNode);
+                return;
+            }
+
+            // Check if it's a visited page
+            linkNode = this.visitedPages.find(node => node.mesh === clickedObject);
+            if (linkNode) {
+                this.navigateToLink(linkNode);
+                return;
             }
         }
     }
@@ -214,6 +229,9 @@ class WikiWander {
             // Create link constellation
             this.createLinkConstellation(wikiLinks);
 
+            // Store current page title
+            this.currentPageTitle = pageTitle;
+
             // Update UI
             document.getElementById('currentPage').textContent = pageTitle;
             document.getElementById('linkCount').textContent = wikiLinks.length;
@@ -237,58 +255,106 @@ class WikiWander {
             }
         }
 
-        // Remove link nodes
+        // Remove only the current page's link nodes (not visited pages)
         this.linkNodes.forEach(node => {
             this.scene.remove(node.mesh);
             if (node.label) this.scene.remove(node.label);
+            if (node.line) this.scene.remove(node.line);
             if (node.mesh.geometry) node.mesh.geometry.dispose();
             if (node.mesh.material) node.mesh.material.dispose();
+            if (node.line && node.line.geometry) node.line.geometry.dispose();
+            if (node.line && node.line.material) node.line.material.dispose();
         });
         this.linkNodes = [];
+
+        // Note: visitedPages are NOT cleared, they persist across navigations
     }
 
     async createPagePlane(title, htmlContent) {
         // Create a canvas to render the page content
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 1024;
-        canvas.height = 1024;
+        canvas.width = 2048;
+        canvas.height = 2048;
 
         // Fill background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Extract text content from HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+
+        // Remove script tags, style tags, and other non-content elements
+        const scripts = tempDiv.querySelectorAll('script, style, .mw-editsection');
+        scripts.forEach(el => el.remove());
+
+        // Get the text content
+        let textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+        // Clean up the text - remove excessive whitespace
+        textContent = textContent.replace(/\n\s*\n/g, '\n').trim();
+
         // Draw title
         ctx.fillStyle = '#000000';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(title, canvas.width / 2, 80);
-
-        // Draw a simple representation
-        ctx.font = '24px Arial';
+        ctx.font = 'bold 56px Arial';
         ctx.textAlign = 'left';
-        const lines = [
-            'Wikipedia Article',
-            '',
-            'Click on the blue circles',
-            'around this page to navigate',
-            'to linked articles.',
-            '',
-            'Total links: visible in sidebar'
-        ];
 
-        let y = 180;
-        lines.forEach(line => {
+        // Word wrap for title if needed
+        const maxWidth = canvas.width - 100;
+        let titleLines = this.wrapText(ctx, title, maxWidth);
+        let y = 80;
+
+        titleLines.forEach(line => {
             ctx.fillText(line, 50, y);
-            y += 40;
+            y += 70;
         });
+
+        // Draw separator line
+        y += 20;
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(50, y);
+        ctx.lineTo(canvas.width - 50, y);
+        ctx.stroke();
+        y += 40;
+
+        // Draw content text
+        ctx.font = '28px Arial';
+        ctx.fillStyle = '#333333';
+
+        // Split content into paragraphs and render
+        const paragraphs = textContent.split('\n').filter(p => p.trim().length > 0);
+        const contentMaxWidth = canvas.width - 100;
+        const lineHeight = 36;
+        const maxY = canvas.height - 50; // Leave margin at bottom
+
+        for (let para of paragraphs) {
+            if (y > maxY) break; // Stop if we run out of space
+
+            // Skip very short lines (likely navigation elements)
+            if (para.trim().length < 3) continue;
+
+            // Wrap paragraph text
+            const lines = this.wrapText(ctx, para, contentMaxWidth);
+
+            for (let line of lines) {
+                if (y > maxY) break;
+                ctx.fillText(line, 50, y);
+                y += lineHeight;
+            }
+
+            // Add space between paragraphs
+            y += lineHeight * 0.5;
+        }
 
         // Create texture from canvas
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
 
-        // Create plane geometry
-        const geometry = new THREE.PlaneGeometry(8, 8);
+        // Create plane geometry (make it bigger to show more content)
+        const geometry = new THREE.PlaneGeometry(10, 10);
         const material = new THREE.MeshStandardMaterial({
             map: texture,
             side: THREE.DoubleSide
@@ -297,6 +363,30 @@ class WikiWander {
         this.currentPage = new THREE.Mesh(geometry, material);
         this.currentPage.position.set(0, 0, 0);
         this.scene.add(this.currentPage);
+    }
+
+    wrapText(ctx, text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        for (let word of words) {
+            const testLine = currentLine + (currentLine ? ' ' : '') + word;
+            const metrics = ctx.measureText(testLine);
+
+            if (metrics.width > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+
+        return lines;
     }
 
     createLinkConstellation(links) {
@@ -329,14 +419,6 @@ class WikiWander {
             const label = this.createLabel(link.title, x, y + 1, z);
             this.scene.add(label);
 
-            // Store link node
-            this.linkNodes.push({
-                mesh: sphere,
-                label: label,
-                title: link.title,
-                url: link.url
-            });
-
             // Add a line connecting to center
             const lineGeometry = new THREE.BufferGeometry().setFromPoints([
                 new THREE.Vector3(0, 0, 0),
@@ -349,6 +431,15 @@ class WikiWander {
             });
             const line = new THREE.Line(lineGeometry, lineMaterial);
             this.scene.add(line);
+
+            // Store link node with line reference
+            this.linkNodes.push({
+                mesh: sphere,
+                label: label,
+                line: line,
+                title: link.title,
+                url: link.url
+            });
         });
     }
 
@@ -397,14 +488,15 @@ class WikiWander {
     navigateToLink(linkNode) {
         console.log('Navigating to:', linkNode.title);
 
-        // Move current page to constellation as a blue circle if it exists
-        if (this.currentPage) {
-            // Find an empty spot in the constellation
-            const currentLinks = this.linkNodes.length;
+        // Save current page to visited pages before loading new one
+        if (this.currentPage && this.currentPageTitle) {
+            // Find a position for the visited page among other visited pages
+            const visitedCount = this.visitedPages.length;
             const radius = 15;
-            const angle = (currentLinks / (currentLinks + 1)) * Math.PI * 2;
+            const angle = (visitedCount / (visitedCount + 1)) * Math.PI * 2;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
+            const y = Math.sin(visitedCount * 0.7) * 2; // Vertical variation
 
             // Create blue circle for the previous page
             const geometry = new THREE.SphereGeometry(0.5, 32, 32);
@@ -414,16 +506,20 @@ class WikiWander {
                 emissiveIntensity: 0.5
             });
             const sphere = new THREE.Mesh(geometry, material);
-            sphere.position.set(x, 0, z);
+            sphere.position.set(x, y, z);
             this.scene.add(sphere);
 
             // Create label for previous page
-            const currentTitle = document.getElementById('currentPage').textContent;
-            const label = this.createLabel(currentTitle, x, 1, z);
+            const label = this.createLabel(this.currentPageTitle, x, y + 1, z);
             this.scene.add(label);
 
-            // Add to link nodes (we'll need to store the previous page's URL somehow)
-            // For now, we'll just make it non-clickable or handle it differently
+            // Add to visited pages array so it's clickable
+            this.visitedPages.push({
+                mesh: sphere,
+                label: label,
+                title: this.currentPageTitle,
+                url: `https://en.wikipedia.org/wiki/${encodeURIComponent(this.currentPageTitle)}`
+            });
         }
 
         // Load the new page
@@ -435,6 +531,15 @@ class WikiWander {
 
         // Rotate link nodes slightly for visual effect
         this.linkNodes.forEach((node, index) => {
+            node.mesh.rotation.y += 0.01;
+            // Make labels always face camera
+            if (node.label) {
+                node.label.lookAt(this.camera.position);
+            }
+        });
+
+        // Rotate visited page nodes
+        this.visitedPages.forEach((node, index) => {
             node.mesh.rotation.y += 0.01;
             // Make labels always face camera
             if (node.label) {

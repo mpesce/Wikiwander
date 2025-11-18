@@ -36,6 +36,8 @@ A fully client-side 3D visualization tool for exploring Wikipedia. Navigate thro
 4. Links are arranged in a circular constellation around the main page
 5. Each link is labeled and large enough to click easily
 6. Clicking a link loads that article and moves the previous page into the constellation
+7. **All previously visited pages remain as blue circles** - you can click them to navigate back
+8. Build up an entire web of knowledge as you explore!
 
 ## Technical Details
 
