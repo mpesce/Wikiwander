@@ -7,7 +7,9 @@ class WikiWander {
         this.camera = null;
         this.renderer = null;
         this.currentPage = null;
-        this.linkNodes = [];
+        this.currentPageTitle = null;
+        this.linkNodes = []; // Current page's links
+        this.visitedPages = []; // Previously visited pages as blue circles
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.isDragging = false;
@@ -151,15 +153,28 @@ class WikiWander {
         // Update raycaster
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // Check for intersections with link nodes
-        const clickableObjects = this.linkNodes.map(node => node.mesh);
+        // Check for intersections with both current links and visited pages
+        const clickableObjects = [
+            ...this.linkNodes.map(node => node.mesh),
+            ...this.visitedPages.map(node => node.mesh)
+        ];
         const intersects = this.raycaster.intersectObjects(clickableObjects);
 
         if (intersects.length > 0) {
             const clickedObject = intersects[0].object;
-            const linkNode = this.linkNodes.find(node => node.mesh === clickedObject);
+
+            // Check if it's a link from current page
+            let linkNode = this.linkNodes.find(node => node.mesh === clickedObject);
             if (linkNode) {
                 this.navigateToLink(linkNode);
+                return;
+            }
+
+            // Check if it's a visited page
+            linkNode = this.visitedPages.find(node => node.mesh === clickedObject);
+            if (linkNode) {
+                this.navigateToLink(linkNode);
+                return;
             }
         }
     }
@@ -214,6 +229,9 @@ class WikiWander {
             // Create link constellation
             this.createLinkConstellation(wikiLinks);
 
+            // Store current page title
+            this.currentPageTitle = pageTitle;
+
             // Update UI
             document.getElementById('currentPage').textContent = pageTitle;
             document.getElementById('linkCount').textContent = wikiLinks.length;
@@ -237,14 +255,19 @@ class WikiWander {
             }
         }
 
-        // Remove link nodes
+        // Remove only the current page's link nodes (not visited pages)
         this.linkNodes.forEach(node => {
             this.scene.remove(node.mesh);
             if (node.label) this.scene.remove(node.label);
+            if (node.line) this.scene.remove(node.line);
             if (node.mesh.geometry) node.mesh.geometry.dispose();
             if (node.mesh.material) node.mesh.material.dispose();
+            if (node.line && node.line.geometry) node.line.geometry.dispose();
+            if (node.line && node.line.material) node.line.material.dispose();
         });
         this.linkNodes = [];
+
+        // Note: visitedPages are NOT cleared, they persist across navigations
     }
 
     async createPagePlane(title, htmlContent) {
@@ -329,14 +352,6 @@ class WikiWander {
             const label = this.createLabel(link.title, x, y + 1, z);
             this.scene.add(label);
 
-            // Store link node
-            this.linkNodes.push({
-                mesh: sphere,
-                label: label,
-                title: link.title,
-                url: link.url
-            });
-
             // Add a line connecting to center
             const lineGeometry = new THREE.BufferGeometry().setFromPoints([
                 new THREE.Vector3(0, 0, 0),
@@ -349,6 +364,15 @@ class WikiWander {
             });
             const line = new THREE.Line(lineGeometry, lineMaterial);
             this.scene.add(line);
+
+            // Store link node with line reference
+            this.linkNodes.push({
+                mesh: sphere,
+                label: label,
+                line: line,
+                title: link.title,
+                url: link.url
+            });
         });
     }
 
@@ -397,14 +421,15 @@ class WikiWander {
     navigateToLink(linkNode) {
         console.log('Navigating to:', linkNode.title);
 
-        // Move current page to constellation as a blue circle if it exists
-        if (this.currentPage) {
-            // Find an empty spot in the constellation
-            const currentLinks = this.linkNodes.length;
+        // Save current page to visited pages before loading new one
+        if (this.currentPage && this.currentPageTitle) {
+            // Find a position for the visited page among other visited pages
+            const visitedCount = this.visitedPages.length;
             const radius = 15;
-            const angle = (currentLinks / (currentLinks + 1)) * Math.PI * 2;
+            const angle = (visitedCount / (visitedCount + 1)) * Math.PI * 2;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
+            const y = Math.sin(visitedCount * 0.7) * 2; // Vertical variation
 
             // Create blue circle for the previous page
             const geometry = new THREE.SphereGeometry(0.5, 32, 32);
@@ -414,16 +439,20 @@ class WikiWander {
                 emissiveIntensity: 0.5
             });
             const sphere = new THREE.Mesh(geometry, material);
-            sphere.position.set(x, 0, z);
+            sphere.position.set(x, y, z);
             this.scene.add(sphere);
 
             // Create label for previous page
-            const currentTitle = document.getElementById('currentPage').textContent;
-            const label = this.createLabel(currentTitle, x, 1, z);
+            const label = this.createLabel(this.currentPageTitle, x, y + 1, z);
             this.scene.add(label);
 
-            // Add to link nodes (we'll need to store the previous page's URL somehow)
-            // For now, we'll just make it non-clickable or handle it differently
+            // Add to visited pages array so it's clickable
+            this.visitedPages.push({
+                mesh: sphere,
+                label: label,
+                title: this.currentPageTitle,
+                url: `https://en.wikipedia.org/wiki/${encodeURIComponent(this.currentPageTitle)}`
+            });
         }
 
         // Load the new page
@@ -435,6 +464,15 @@ class WikiWander {
 
         // Rotate link nodes slightly for visual effect
         this.linkNodes.forEach((node, index) => {
+            node.mesh.rotation.y += 0.01;
+            // Make labels always face camera
+            if (node.label) {
+                node.label.lookAt(this.camera.position);
+            }
+        });
+
+        // Rotate visited page nodes
+        this.visitedPages.forEach((node, index) => {
             node.mesh.rotation.y += 0.01;
             // Make labels always face camera
             if (node.label) {
