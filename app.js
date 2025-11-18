@@ -274,44 +274,87 @@ class WikiWander {
         // Create a canvas to render the page content
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 1024;
-        canvas.height = 1024;
+        canvas.width = 2048;
+        canvas.height = 2048;
 
         // Fill background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Extract text content from HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+
+        // Remove script tags, style tags, and other non-content elements
+        const scripts = tempDiv.querySelectorAll('script, style, .mw-editsection');
+        scripts.forEach(el => el.remove());
+
+        // Get the text content
+        let textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+        // Clean up the text - remove excessive whitespace
+        textContent = textContent.replace(/\n\s*\n/g, '\n').trim();
+
         // Draw title
         ctx.fillStyle = '#000000';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(title, canvas.width / 2, 80);
-
-        // Draw a simple representation
-        ctx.font = '24px Arial';
+        ctx.font = 'bold 56px Arial';
         ctx.textAlign = 'left';
-        const lines = [
-            'Wikipedia Article',
-            '',
-            'Click on the blue circles',
-            'around this page to navigate',
-            'to linked articles.',
-            '',
-            'Total links: visible in sidebar'
-        ];
 
-        let y = 180;
-        lines.forEach(line => {
+        // Word wrap for title if needed
+        const maxWidth = canvas.width - 100;
+        let titleLines = this.wrapText(ctx, title, maxWidth);
+        let y = 80;
+
+        titleLines.forEach(line => {
             ctx.fillText(line, 50, y);
-            y += 40;
+            y += 70;
         });
+
+        // Draw separator line
+        y += 20;
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(50, y);
+        ctx.lineTo(canvas.width - 50, y);
+        ctx.stroke();
+        y += 40;
+
+        // Draw content text
+        ctx.font = '28px Arial';
+        ctx.fillStyle = '#333333';
+
+        // Split content into paragraphs and render
+        const paragraphs = textContent.split('\n').filter(p => p.trim().length > 0);
+        const contentMaxWidth = canvas.width - 100;
+        const lineHeight = 36;
+        const maxY = canvas.height - 50; // Leave margin at bottom
+
+        for (let para of paragraphs) {
+            if (y > maxY) break; // Stop if we run out of space
+
+            // Skip very short lines (likely navigation elements)
+            if (para.trim().length < 3) continue;
+
+            // Wrap paragraph text
+            const lines = this.wrapText(ctx, para, contentMaxWidth);
+
+            for (let line of lines) {
+                if (y > maxY) break;
+                ctx.fillText(line, 50, y);
+                y += lineHeight;
+            }
+
+            // Add space between paragraphs
+            y += lineHeight * 0.5;
+        }
 
         // Create texture from canvas
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
 
-        // Create plane geometry
-        const geometry = new THREE.PlaneGeometry(8, 8);
+        // Create plane geometry (make it bigger to show more content)
+        const geometry = new THREE.PlaneGeometry(10, 10);
         const material = new THREE.MeshStandardMaterial({
             map: texture,
             side: THREE.DoubleSide
@@ -320,6 +363,30 @@ class WikiWander {
         this.currentPage = new THREE.Mesh(geometry, material);
         this.currentPage.position.set(0, 0, 0);
         this.scene.add(this.currentPage);
+    }
+
+    wrapText(ctx, text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        for (let word of words) {
+            const testLine = currentLine + (currentLine ? ' ' : '') + word;
+            const metrics = ctx.measureText(testLine);
+
+            if (metrics.width > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+
+        return lines;
     }
 
     createLinkConstellation(links) {
